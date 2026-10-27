@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamVault - Video Library & Bookmark Manager</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                        <i class="fa-solid font-bold fa-play text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                            StreamVault
+                            <span class="text-xs bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full font-normal border border-brand-500/30">Hub</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">Organize & watch your favorite videos</p>
+                    </div>
+                </div>
+
+                <!-- Action Button for Mobile -->
+                <button onclick="openVideoModal()" class="md:hidden bg-brand-600 hover:bg-brand-500 text-white p-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center">
+                    <i class="fa-solid fa-plus text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Search Bar & Controls -->
+            <div class="flex flex-1 max-w-xl items-center gap-3">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="renderApp()" placeholder="Search title, description or tags..." 
+                           class="w-full pl-10 pr-10 py-2.5 bg-slate-800/60 border border-slate-700/60 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-slate-100 placeholder-slate-400 transition-all">
+                    <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Sort Dropdown -->
+                <div class="relative">
+                    <select id="sortSelect" onchange="renderApp()" class="appearance-none bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-2.5 pr-9 text-sm focus:outline-none focus:border-brand-500 text-slate-200 cursor-pointer">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="title">Title (A-Z)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- Desktop Add Video Button -->
+            <button onclick="openVideoModal()" class="hidden md:flex items-center gap-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg shadow-brand-600/25 hover:shadow-brand-500/40 transition-all transform hover:-translate-y-0.5">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add Video</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Category Filter Tabs & Stats Bar -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
+            
+            <!-- Category Tabs -->
+            <div id="categoryTabs" class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 scrollbar-none">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Library Quick Stats -->
+            <div class="flex items-center gap-4 text-xs text-slate-400 self-end sm:self-auto flex-shrink-0">
+                <span>Total: <strong id="totalCount" class="text-slate-200 font-semibold">0</strong></span>
+                <span>•</span>
+                <span>Favorites: <strong id="favCount" class="text-amber-400 font-semibold">0</strong></span>
+            </div>
+        </div>
+
+        <!-- Video Grid Display -->
+        <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Dynamically populated video cards -->
+        </div>
+
+        <!-- Empty State Container -->
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-20 text-center">
+            <div class="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center text-slate-600 text-3xl mb-4 border border-slate-800">
+                <i class="fa-solid fa-film"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-slate-300">No Videos Found</h3>
+            <p class="text-slate-500 text-sm max-w-xs mt-1">Try adjusting your search filters or add a new video bookmark to your collection.</p>
+            <button onclick="openVideoModal()" class="mt-5 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-all">
+                <i class="fa-solid fa-plus mr-1.5"></i> Add New Video
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+        <p>StreamVault Library &copy; 2026. Managed locally in your browser.</p>
+    </footer>
+
+    <!-- ADD / EDIT VIDEO MODAL -->
+    <div id="videoModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl transform transition-all relative">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <h2 id="modalTitle" class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-bookmark text-brand-400"></i> Add New Bookmark
+                </h2>
+                <button onclick="closeVideoModal()" class="text-slate-400 hover:text-white transition-colors p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="videoForm" onsubmit="handleFormSubmit(event)" class="mt-4 flex flex-col gap-4">
+                <input type="hidden" id="videoId">
+
+                <!-- URL Input with Auto-detection -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Video URL *</label>
+                    <div class="relative">
+                        <input type="url" id="videoUrl" required onchange="autoDetectMetadata()" placeholder="https://www.youtube.com/watch?v=..."
+                               class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                    </div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">Supports YouTube, Vimeo, direct MP4 links.</span>
+                </div>
+
+                <!-- Title Input -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Title *</label>
+                    <input type="text" id="videoTitleInput" required placeholder="e.g. Build a Web App in 10 Minutes"
+                           class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                </div>
+
+                <!-- Category & Custom Tag -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Category</label>
+                        <select id="videoCategory" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                            <option value="Tutorials">Tutorials</option>
+                            <option value="Tech">Tech</option>
+                            <option value="Music">Music</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Education">Education</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Tags (comma separated)</label>
+                        <input type="text" id="videoTags" placeholder="code, js, web"
+                               class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <!-- Custom Thumbnail URL (Optional) -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Custom Thumbnail URL (Optional)</label>
+                    <input type="url" id="videoThumbnail" placeholder="Auto-generated if YouTube/Vimeo"
+                           class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                </div>
+
+                <!-- Description Input -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Description</label>
+                    <textarea id="videoDescription" rows="3" placeholder="Brief details or notes about this video..."
+                              class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 resize-none"></textarea>
+                </div>
+
+                <!-- Form Action Buttons -->
+                <div class="flex items-center justify-end gap-3 mt-2">
+                    <button type="button" onclick="closeVideoModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-medium bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/30 transition-all">
+                        Save Video
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EMBEDDED PLAYER MODAL -->
+    <div id="playerModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col">
+            
+            <!-- Player Header -->
+            <div class="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+                <div class="flex items-center gap-2 overflow-hidden mr-4">
+                    <span id="playerPlatformBadge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-500/20 text-brand-300 uppercase">YouTube</span>
+                    <h3 id="playerTitle" class="text-sm sm:text-base font-semibold text-white truncate">Video Title</h3>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <a id="playerExternalLink" href="#" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-400 hover:text-brand-400 p-2 flex items-center gap-1" title="Open in New Tab">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="hidden sm:inline">Open External</span>
+                    </a>
+                    <button onclick="closePlayerModal()" class="text-slate-400 hover:text-white p-2 text-lg">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Player Video Container -->
+            <div class="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden">
+                <div id="playerContainer" class="w-full h-full flex items-center justify-center">
+                    <!-- Dynamic iframe or <video> injected here -->
+                </div>
+            </div>
+
+            <!-- Player Details Footer -->
+            <div class="p-4 sm:p-5 bg-slate-900/90 flex flex-col gap-2">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div id="playerTags" class="flex flex-wrap gap-1.5">
+                        <!-- Dynamic Tags -->
+                    </div>
+                    <span id="playerCategory" class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full">Category</span>
+                </div>
+                <p id="playerDescription" class="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+                    Video description goes here.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Overlay -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 text-white border border-slate-700 px-4 py-3 rounded-xl shadow-xl flex items-center gap-3">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMessage" class="text-sm font-medium">Action successful</span>
+    </div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        // Preset Sample Videos Data
+        const SAMPLE_VIDEOS = [
+            {
+                id: "sample-1",
+                title: "Big Buck Bunny - Open Source Animation",
+                url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                platform: "MP4",
+                thumbnail: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=800&q=80",
+                category: "Entertainment",
+                tags: ["animation", "open source", "4k"],
+                description: "Classic open-source short animated movie. High quality showcase video link.",
+                favorite: true,
+                createdAt: Date.now() - 500000000
+            },
+            {
+                id: "sample-2",
+                title: "Building Modern Web Apps with Tailwind CSS",
+                url: "https://www.youtube.com/watch?v=dFgzHOX84xQ",
+                platform: "YouTube",
+                thumbnail: "https://img.youtube.com/vi/dFgzHOX84xQ/hqdefault.jpg",
+                category: "Tutorials",
+                tags: ["tailwind", "css", "webdev"],
+                description: "Learn how to craft clean and responsive user interfaces rapidly with utility-first CSS.",
+                favorite: false,
+                createdAt: Date.now() - 400000000
+            },
+            {
+                id: "sample-3",
+                title: "Lofi Hip Hop Radio - Beats to Relax/Study to",
+                url: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
+                platform: "YouTube",
+                thumbnail: "https://img.youtube.com/vi/jfKfPfyJRdk/hqdefault.jpg",
+                category: "Music",
+                tags: ["lofi", "music", "chill", "study"],
+                description: "Smooth background lo-fi beats stream for focusing, studying, and ambient relaxation.",
+                favorite: true,
+                createdAt: Date.now() - 300000000
+            },
+            {
+                id: "sample-4",
+                title: "JavaScript Async/Await Explained in 10 Minutes",
+                url: "https://www.youtube.com/watch?v=V_Kr9OSfDeU",
+                platform: "YouTube",
+                thumbnail: "https://img.youtube.com/vi/V_Kr9OSfDeU/hqdefault.jpg",
+                category: "Tech",
+                tags: ["javascript", "coding", "async"],
+                description: "Master asynchronous JavaScript, Promises, and Async/Await patterns with clear examples.",
+                favorite: false,
+                createdAt: Date.now() - 200000000
+            },
+            {
+                id: "sample-5",
+                title: "Vimeo Drone Footage - Nature Aesthetics",
+                url: "https://vimeo.com/76979871",
+                platform: "Vimeo",
+                thumbnail: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+                category: "Education",
+                tags: ["drone", "nature", "4k"],
+                description: "Breathtaking cinematic aerial perspectives of pristine ocean coastal lines.",
+                favorite: false,
+                createdAt: Date.now() - 100000000
+            }
+        ];
+
+        // State Management
+        let videos = [];
+        let activeCategory = "All";
+
+        // Initialize App
+        window.onload = function() {
+            loadStoredVideos();
+            renderApp();
+        };
+
+        // Load data from LocalStorage
+        function loadStoredVideos() {
+            const stored = localStorage.getItem("streamvault_videos");
+            if (stored) {
+                try {
+                    videos = JSON.parse(stored);
+                } catch (e) {
+                    console.error("Failed to parse local storage data", e);
+                    videos = [...SAMPLE_VIDEOS];
+                }
+            } else {
+                videos = [...SAMPLE_VIDEOS];
+                saveToLocalStorage();
+            }
+        }
+
+        // Save State to LocalStorage
+        function saveToLocalStorage() {
+            localStorage.setItem("streamvault_videos", JSON.stringify(videos));
+        }
+
+        // Render Application View
+        function renderApp() {
+            renderCategories();
+            renderVideoGrid();
+            updateStats();
+        }
+
+        // Extract categories and render filter bar
+        function renderCategories() {
+            const categoriesSet = new Set(["All", "Favorites"]);
+            videos.forEach(v => {
+                if (v.category) categoriesSet.add(v.category);
+            });
+
+            const categoryTabsContainer = document.getElementById("categoryTabs");
+            categoryTabsContainer.innerHTML = "";
+
+            Array.from(categoriesSet).forEach(cat => {
+                const isSelected = activeCategory === cat;
+                const btn = document.createElement("button");
+                btn.onclick = () => {
+                    activeCategory = cat;
+                    renderApp();
+                };
+
+                let activeClasses = isSelected
+                    ? "bg-brand-600 text-white shadow-md shadow-brand-600/30 font-medium"
+                    : "bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-700/50";
+
+                btn.className = `px-3.5 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all duration-200 ${activeClasses}`;
+                
+                if (cat === "Favorites") {
+                    btn.innerHTML = `<i class="fa-solid fa-star text-amber-400 mr-1.5"></i>Favorites`;
+                } else {
+                    btn.innerText = cat;
+                }
+                
+                categoryTabsContainer.appendChild(btn);
+            });
+        }
+
+        // Filter and Sort Videos
+        function getFilteredVideos() {
+            const searchQuery = document.getElementById("searchInput").value.toLowerCase().trim();
+            const sortBy = document.getElementById("sortSelect").value;
+
+            // Show/Hide search clear button
+            document.getElementById("clearSearchBtn").classList.toggle("hidden", searchQuery === "");
+
+            return videos.filter(v => {
+                // Filter by category
+                if (activeCategory === "Favorites" && !v.favorite) return false;
+                if (activeCategory !== "All" && activeCategory !== "Favorites" && v.category !== activeCategory) return false;
+
+                // Search by query
+                if (searchQuery) {
+                    const titleMatch = v.title.toLowerCase().includes(searchQuery);
+                    const descMatch = v.description.toLowerCase().includes(searchQuery);
+                    const tagsMatch = v.tags && v.tags.some(t => t.toLowerCase().includes(searchQuery));
+                    return titleMatch || descMatch || tagsMatch;
+                }
+
+                return true;
+            }).sort((a, b) => {
+                if (sortBy === "newest") return b.createdAt - a.createdAt;
+                if (sortBy === "oldest") return a.createdAt - b.createdAt;
+                if (sortBy === "title") return a.title.localeCompare(b.title);
+                return 0;
+            });
+        }
+
+        // Render Video Grid Cards
+        function renderVideoGrid() {
+            const videoGrid = document.getElementById("videoGrid");
+            const emptyState = document.getElementById("emptyState");
+            const filtered = getFilteredVideos();
+
+            if (filtered.length === 0) {
+                videoGrid.innerHTML = "";
+                emptyState.classList.remove("hidden");
+                emptyState.classList.add("flex");
+                return;
+            }
+
+            emptyState.classList.add("hidden");
+            emptyState.classList.remove("flex");
+
+            videoGrid.innerHTML = filtered.map(video => {
+                const platformBadgeColor = getPlatformBadgeColor(video.platform);
+                const isFav = video.favorite;
+
+                return `
+                    <div class="group bg-slate-900 border border-slate-800/80 hover:border-slate-700 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <!-- Thumbnail Container -->
+                            <div class="relative aspect-video w-full overflow-hidden bg-slate-950 cursor-pointer" onclick="openPlayerModal('${video.id}')">
+                                <img src="${video.thumbnail}" alt="${escapeHtml(video.title)}" 
+                                     onerror="this.src='https://placehold.co/600x400/1e293b/818cf8?text=No+Thumbnail'"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out">
+                                
+                                <!-- Play Overlay Button -->
+                                <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                    <div class="w-12 h-12 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                                        <i class="fa-solid fa-play ml-0.5"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Platform Badge -->
+                                <span class="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase text-white shadow-md ${platformBadgeColor}">
+                                    ${video.platform}
+                                </span>
+
+                                <!-- Favorite Toggle Button -->
+                                <button onclick="event.stopPropagation(); toggleFavorite('${video.id}')" 
+                                        class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/60 backdrop-blur-md text-white flex items-center justify-center hover:bg-slate-950 transition-colors">
+                                    <i class="fa-solid fa-star text-xs ${isFav ? 'text-amber-400' : 'text-slate-400'}"></i>
+                                </button>
+                            </div>
+
+                            <!-- Card Body -->
+                            <div class="p-4 flex flex-col gap-2">
+                                <div class="flex items-center justify-between text-xs text-brand-400 font-medium">
+                                    <span>${video.category || 'General'}</span>
+                                </div>
+
+                                <h3 class="font-semibold text-slate-100 text-sm sm:text-base leading-snug line-clamp-2 hover:text-brand-400 transition-colors cursor-pointer" 
+                                    onclick="openPlayerModal('${video.id}')">
+                                    ${escapeHtml(video.title)}
+                                </h3>
+
+                                <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                                    ${escapeHtml(video.description || 'No description provided.')}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer -->
+                        <div class="px-4 pb-4 pt-2 border-t border-slate-800/40 flex items-center justify-between">
+                            <!-- Tags -->
+                            <div class="flex flex-wrap gap-1 max-w-[70%] overflow-hidden h-5">
+                                ${(video.tags || []).map(t => `<span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">#${escapeHtml(t.trim())}</span>`).join('')}
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex items-center gap-1 text-slate-400">
+                                <button onclick="openVideoModal('${video.id}')" title="Edit Video" class="hover:text-white p-1.5 transition-colors">
+                                    <i class="fa-regular fa-pen-to-square text-xs"></i>
+                                </button>
+                                <button onclick="deleteVideo('${video.id}')" title="Delete Video" class="hover:text-red-400 p-1.5 transition-colors">
+                                    <i class="fa-regular fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Platform Styling helper
+        function getPlatformBadgeColor(platform) {
+            switch(platform.toUpperCase()) {
+                case 'YOUTUBE': return 'bg-red-600';
+                case 'VIMEO': return 'bg-sky-500';
+                case 'MP4': return 'bg-emerald-600';
+                default: return 'bg-purple-600';
+            }
+        }
+
+        // Toggle Favorite Status
+        function toggleFavorite(id) {
+            const video = videos.find(v => v.id === id);
+            if (video) {
+                video.favorite = !video.favorite;
+                saveToLocalStorage();
+                renderApp();
+                showToast(video.favorite ? "Added to Favorites" : "Removed from Favorites");
+            }
+        }
+
+        // Update Header Quick Stats
+        function updateStats() {
+            document.getElementById("totalCount").innerText = videos.length;
+            document.getElementById("favCount").innerText = videos.filter(v => v.favorite).length;
+        }
+
+        // Clear Search Query
+        function clearSearch() {
+            document.getElementById("searchInput").value = "";
+            renderApp();
+        }
+
+        // Open Add/Edit Video Modal
+        function openVideoModal(id = null) {
+            const modal = document.getElementById("videoModal");
+            const form = document.getElementById("videoForm");
+            const modalTitle = document.getElementById("modalTitle");
+
+            form.reset();
+            document.getElementById("videoId").value = "";
+
+            if (id) {
+                const video = videos.find(v => v.id === id);
+                if (video) {
+                    modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400"></i> Edit Bookmark`;
+                    document.getElementById("videoId").value = video.id;
+                    document.getElementById("videoUrl").value = video.url;
+                    document.getElementById("videoTitleInput").value = video.title;
+                    document.getElementById("videoCategory").value = video.category || "Other";
+                    document.getElementById("videoTags").value = (video.tags || []).join(", ");
+                    document.getElementById("videoThumbnail").value = video.thumbnail || "";
+                    document.getElementById("videoDescription").value = video.description || "";
+                }
+            } else {
+                modalTitle.innerHTML = `<i class="fa-solid fa-bookmark text-brand-400"></i> Add New Bookmark`;
+            }
+
+            modal.classList.remove("hidden");
+        }
+
+        // Close Add/Edit Modal
+        function closeVideoModal() {
+            document.getElementById("videoModal").classList.add("hidden");
+        }
+
+        // Handle Add/Edit Form Submit
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById("videoId").value;
+            const url = document.getElementById("videoUrl").value.trim();
+            const title = document.getElementById("videoTitleInput").value.trim();
+            const category = document.getElementById("videoCategory").value;
+            const tagsRaw = document.getElementById("videoTags").value;
+            const customThumb = document.getElementById("videoThumbnail").value.trim();
+            const description = document.getElementById("videoDescription").value.trim();
+
+            const tags = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(Boolean) : [];
+            const platform = detectPlatform(url);
+            const thumbnail = customThumb || generateThumbnailUrl(url, platform);
+
+            if (id) {
+                // Edit Existing
+                const index = videos.findIndex(v => v.id === id);
+                if (index !== -1) {
+                    videos[index] = {
+                        ...videos[index],
+                        url,
+                        title,
+                        category,
+                        tags,
+                        thumbnail,
+                        description,
+                        platform
+                    };
+                    showToast("Video bookmark updated");
+                }
+            } else {
+                // Create New
+                const newVideo = {
+                    id: 'vid_' + Date.now(),
+                    url,
+                    title,
+                    category,
+                    tags,
+                    thumbnail,
+                    description,
+                    platform,
+                    favorite: false,
+                    createdAt: Date.now()
+                };
+                videos.unshift(newVideo);
+                showToast("New video bookmark added");
+            }
+
+            saveToLocalStorage();
+            closeVideoModal();
+            renderApp();
+        }
+
+        // Auto-detect YouTube thumbnail when URL is pasted
+        function autoDetectMetadata() {
+            const url = document.getElementById("videoUrl").value.trim();
+            const titleInput = document.getElementById("videoTitleInput");
+            const thumbInput = document.getElementById("videoThumbnail");
+
+            const platform = detectPlatform(url);
+            if (platform === "YouTube" && !thumbInput.value) {
+                thumbInput.value = generateThumbnailUrl(url, platform);
+            }
+        }
+
+        // Detect Platform based on URL pattern
+        function detectPlatform(url) {
+            if (url.includes("youtube.com") || url.includes("youtu.be")) return "YouTube";
+            if (url.includes("vimeo.com")) return "Vimeo";
+            if (url.endsWith(".mp4") || url.endsWith(".webm") || url.endsWith(".ogg")) return "MP4";
+            return "Custom";
+        }
+
+        // Auto Generate Thumbnail URL
+        function generateThumbnailUrl(url, platform) {
+            if (platform === "YouTube") {
+                let videoId = "";
+                if (url.includes("youtu.be/")) {
+                    videoId = url.split("youtu.be/")[1]?.split("?")[0];
+                } else if (url.includes("watch?v=")) {
+                    videoId = url.split("watch?v=")[1]?.split("&")[0];
+                }
+                if (videoId) {
+                    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+            }
+            return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80";
+        }
+
+        // Delete Video Confirmation
+        function deleteVideo(id) {
+            if (confirm("Are you sure you want to remove this video bookmark?")) {
+                videos = videos.filter(v => v.id !== id);
+                saveToLocalStorage();
+                renderApp();
+                showToast("Video deleted", "error");
+            }
+        }
+
+        // Open Player Modal
+        function openPlayerModal(id) {
+            const video = videos.find(v => v.id === id);
+            if (!video) return;
+
+            document.getElementById("playerTitle").innerText = video.title;
+            document.getElementById("playerDescription").innerText = video.description || "No description available.";
+            document.getElementById("playerCategory").innerText = video.category || "General";
+            document.getElementById("playerPlatformBadge").innerText = video.platform;
+            document.getElementById("playerExternalLink").href = video.url;
+
+            // Render Tags
+            const tagsContainer = document.getElementById("playerTags");
+            tagsContainer.innerHTML = (video.tags || []).map(t => `<span class="text-[11px] bg-slate-800 text-brand-300 px-2 py-0.5 rounded-md">#${escapeHtml(t)}</span>`).join('');
+
+            // Embed Content Generator
+            const container = document.getElementById("playerContainer");
+            container.innerHTML = getEmbedHTML(video.url, video.platform);
+
+            document.getElementById("playerModal").classList.remove("hidden");
+        }
+
+        // Generate embed element depending on video source type
+        function getEmbedHTML(url, platform) {
+            if (platform === "YouTube") {
+                let videoId = "";
+                if (url.includes("youtu.be/")) {
+                    videoId = url.split("youtu.be/")[1]?.split("?")[0];
+                } else if (url.includes("watch?v=")) {
+                    videoId = url.split("watch?v=")[1]?.split("&")[0];
+                }
+                return `<iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}?autoplay=1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            } else if (platform === "Vimeo") {
+                const vimeoId = url.split("vimeo.com/")[1]?.split("?")[0];
+                return `<iframe class="w-full h-full" src="https://player.vimeo.com/video/${vimeoId}?autoplay=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+            } else if (platform === "MP4") {
+                return `<video class="w-full h-full" controls autoplay><source src="${url}" type="video/mp4">Your browser does not support HTML5 video.</video>`;
+            } else {
+                return `<iframe class="w-full h-full" src="${url}" frameborder="0" allowfullscreen></iframe>`;
+            }
+        }
+
+        // Close Player Modal
+        function closePlayerModal() {
+            const playerModal = document.getElementById("playerModal");
+            const container = document.getElementById("playerContainer");
+            container.innerHTML = ""; // Stop audio/video playing in background
+            playerModal.classList.add("hidden");
+        }
+
+        // Display Toast Notification
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast");
+            const toastMessage = document.getElementById("toastMessage");
+            const toastIcon = document.getElementById("toastIcon");
+
+            toastMessage.innerText = message;
+            if (type === "error") {
+                toastIcon.className = "fa-solid fa-circle-xmark text-red-400 text-lg";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            }
+
+            toast.classList.remove("translate-y-20", "opacity-0");
+            toast.classList.add("translate-y-0", "opacity-100");
+
+            setTimeout(() => {
+                toast.classList.remove("translate-y-0", "opacity-100");
+                toast.classList.add("translate-y-20", "opacity-0");
+            }, 3000);
+        }
+
+        // Escape HTML helper
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+    </script>
+</body>
+</html>
